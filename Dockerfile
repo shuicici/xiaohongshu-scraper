@@ -1,6 +1,6 @@
 FROM apify/actor-node:18
 
-# Install dependencies (including devDependencies for TypeScript)
+# Install dependencies
 COPY package.json package-lock.json ./
 RUN npm install --include=dev
 
