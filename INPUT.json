@@ -1,0 +1,61 @@
+{
+  "title": "Xiaohongshu Scraper Input",
+  "type": "object",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["search", "note", "user", "comments"],
+        "title": "Scraper Mode",
+        "description": "Choose what to scrape: search notes by keyword, get note details, get user profile, or extract comments"
+      },
+      "keyword": {
+        "type": "string",
+        "title": "Search Keyword",
+        "description": "Keyword to search for (used in search mode)"
+      },
+      "noteUrl": {
+        "type": "string",
+        "title": "Note URL",
+        "description": "Full URL of a Xiaohongshu note (used in note/comments mode)"
+      },
+      "userId": {
+        "type": "string",
+        "title": "User ID",
+        "description": "Xiaohongshu user ID (used in user mode)"
+      },
+      "userUrl": {
+        "type": "string",
+        "title": "User URL",
+        "description": "Full URL of a Xiaohongshu user profile (used in user mode)"
+      },
+      "limit": {
+        "type": "integer",
+        "title": "Result Limit",
+        "description": "Maximum number of results to return",
+        "default": 20,
+        "minimum": 1,
+        "maximum": 100
+      },
+      "proxy": {
+        "type": "object",
+        "title": "Proxy Configuration",
+        "description": "Configure Apify proxy for requests",
+        "properties": {
+          "useApifyProxy": {
+            "type": "boolean",
+            "title": "Use Apify Proxy",
+            "default": true
+          },
+          "apifyProxyGroups": {
+            "type": "array",
+            "title": "Proxy Groups",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "required": ["mode"]
+  }
+}

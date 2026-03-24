@@ -1,0 +1,14 @@
+{
+  "name": "xiaohongshu-scraper",
+  "version": "1.0.0",
+  "title": "Xiaohongshu Scraper",
+  "description": "Scrape Xiaohongshu (RED) notes, users, and comments",
+  "categories": ["Social Media", "E-commerce", "Lead Generation"],
+  "inputSchema": "INPUT.json",
+  "isPublic": true,
+  "isCloud": true,
+  "isAnonymous": false,
+  "capabilities": {
+    "availableContexts": ["RUN", "BUILD", "PREVIEW"]
+  }
+}
