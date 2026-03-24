@@ -15,6 +15,7 @@ interface Input {
 }
 
 async function main() {
+    await Actor.init();
     const input = await Actor.getInput<Input>();
     
     if (!input || !input.mode) {
@@ -58,7 +59,9 @@ async function main() {
     }
 }
 
-main().catch((error) => {
+main().then(async () => {
+    await Actor.exit();
+}).catch((error) => {
     console.error('Actor error:', error);
     process.exit(1);
 });
