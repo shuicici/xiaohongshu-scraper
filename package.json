@@ -2,7 +2,7 @@
   "name": "xiaohongshu-scraper",
   "version": "1.0.0",
   "description": "Xiaohongshu (RED) social platform scraper for Apify",
-  "main": "src/main.ts",
+  "main": "dist/main.js",
   "scripts": {
     "start": "node dist/main.js",
     "build": "tsc",
@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "apify": "^3.1.10",
-    "axios": "^1.6.0"
+    "crawlee": "^3.7.0",
+    "puppeteer": "^21.6.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
