@@ -1,8 +1,5 @@
-import { Dataset, Actor } from 'apify';
-import { PlaywrightCrawler, log as crawleeLog } from 'crawlee';
-
-// Suppress Crawlee logs
-crawleeLog.setLevel('warning');
+import { Dataset, Actor, log } from 'apify';
+import { PlaywrightCrawler } from 'crawlee';
 
 interface Input {
     mode: string;
@@ -14,7 +11,7 @@ interface Input {
 }
 
 // This function is called for each URL
-async function requestHandler({ page, request, log }) {
+async function requestHandler({ page, request }: { page: any, request: any }) {
     const userData = request.userData as any;
     
     // Wait for page to load
@@ -179,14 +176,14 @@ async function main() {
             throw new Error(`Unknown mode: ${input.mode}`);
     }
     
-    Actor.log.info(`Starting scrape: ${input.mode} - ${url}`);
+    log.info(`Starting scrape: ${input.mode} - ${url}`);
     
     await crawler.run([{
         url,
         userData
     }]);
     
-    Actor.log.info('Scraping completed');
+    log.info('Scraping completed');
     
     await Actor.exit();
 }
