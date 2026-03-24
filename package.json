@@ -2,7 +2,7 @@
   "name": "xiaohongshu-scraper",
   "version": "1.0.0",
   "description": "Xiaohongshu (RED) social platform scraper for Apify",
-  "main": "dist/main.js",
+  "main": "src/main.ts",
   "scripts": {
     "start": "node dist/main.js",
     "build": "tsc",
