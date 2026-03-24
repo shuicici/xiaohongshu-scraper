@@ -1,0 +1,9 @@
+{
+	"id": "ncldsFAlSyadJ0Q",
+	"json": "{\"id\":\"ncldsFAlSyadJ0Q\",\"url\":\"https://www.xiaohongshu.com/search_result?keyword=coffee&type=51\",\"loadedUrl\":\"https://www.xiaohongshu.com/search_result/?keyword=coffee&type=51\",\"uniqueKey\":\"https://www.xiaohongshu.com/search_result?keyword=coffee&type=51\",\"method\":\"GET\",\"noRetry\":false,\"retryCount\":0,\"errorMessages\":[],\"headers\":{},\"userData\":{\"type\":\"search\",\"input\":{\"mode\":\"search\",\"keyword\":\"coffee\",\"limit\":5},\"__crawlee\":{\"state\":4}},\"handledAt\":\"2026-03-24T11:18:59.170Z\"}",
+	"method": "GET",
+	"orderNo": null,
+	"retryCount": 0,
+	"uniqueKey": "https://www.xiaohongshu.com/search_result?keyword=coffee&type=51",
+	"url": "https://www.xiaohongshu.com/search_result?keyword=coffee&type=51"
+}

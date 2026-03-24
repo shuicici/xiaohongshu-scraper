@@ -6,9 +6,15 @@
     "properties": {
       "mode": {
         "type": "string",
-        "enum": ["search", "note", "user", "comments"],
+        "enum": ["search", "note", "user", "comments", "login"],
         "title": "Scraper Mode",
-        "description": "Choose what to scrape: search notes by keyword, get note details, get user profile, or extract comments"
+        "description": "Choose what to scrape: search notes, get note details, user profile, comments, or 'login' to save session"
+      },
+      "useSession": {
+        "type": "boolean",
+        "title": "Use Saved Session",
+        "description": "Whether to use the session saved in session.json (Local Only)",
+        "default": true
       },
       "keyword": {
         "type": "string",
@@ -37,6 +43,19 @@
         "default": 20,
         "minimum": 1,
         "maximum": 100
+      },
+      "cookie": {
+        "type": "string",
+        "title": "Session Cookie",
+        "description": "Copy your 'webId' or the full cookie string from your browser to bypass login/captcha"
+      },
+      "maxPages": {
+        "type": "integer",
+        "title": "Max Pages to Scroll",
+        "description": "Number of times to scroll down to load more results",
+        "default": 3,
+        "minimum": 0,
+        "maximum": 50
       },
       "proxy": {
         "type": "object",

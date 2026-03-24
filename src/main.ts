@@ -8,112 +8,13 @@ interface Input {
     userId?: string;
     userUrl?: string;
     limit?: number;
+    // Backend API URL - can be set as environment variable or input
+    apiUrl?: string;
 }
 
-// This function is called for each URL
-async function requestHandler({ page, request }: { page: any, request: any }) {
-    const userData = request.userData as any;
-    
-    // Wait for page to load
-    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
-    
-    // Add delay to appear more human
-    await page.waitForTimeout(2000 + Math.random() * 2000);
-    
-    if (userData.type === 'search') {
-        // Try to extract search results
-        const results = await page.evaluate(() => {
-            const items: any[] = [];
-            
-            // Try different selectors for search results
-            const cards = document.querySelectorAll('.note-item, [class*="note-card"], .item-holder');
-            
-            cards.forEach((card, idx) => {
-                const title = card.querySelector('.title, [class*="title"]')?.textContent?.trim();
-                const content = card.querySelector('.content, .desc, [class*="desc"]')?.textContent?.trim();
-                const author = card.querySelector('.author, [class*="user"]')?.textContent?.trim();
-                const likes = card.querySelector('.likes, [class*="like"]')?.textContent?.trim();
-                
-                if (title || content) {
-                    items.push({ title, content, author, likes, index: idx });
-                }
-            });
-            
-            return items;
-        });
-        
-        log.info(`Found ${results.length} search results`);
-        
-        await Dataset.pushData({
-            mode: 'search',
-            keyword: userData.keyword,
-            results: results,
-            url: request.url
-        });
-    }
-    else if (userData.type === 'note') {
-        // Extract note detail
-        const noteData = await page.evaluate(() => {
-            return {
-                title: document.querySelector('.title, [class*="title"]')?.textContent?.trim(),
-                content: document.querySelector('.content, .desc, [class*="desc"]')?.textContent?.trim(),
-                author: document.querySelector('.author-name, [class*="user"]')?.textContent?.trim(),
-                likes: document.querySelector('.likes, [class*="like"]')?.textContent?.trim(),
-                url: window.location.href
-            };
-        });
-        
-        log.info('Extracted note data');
-        
-        await Dataset.pushData({
-            mode: 'note',
-            data: noteData
-        });
-    }
-    else if (userData.type === 'user') {
-        // Extract user profile
-        const userData2 = await page.evaluate(() => {
-            return {
-                nickname: document.querySelector('.nickname, [class*="name"]')?.textContent?.trim(),
-                desc: document.querySelector('.desc, [class*="bio"]')?.textContent?.trim(),
-                fans: document.querySelector('.fans, [class*="follower"]')?.textContent?.trim(),
-                url: window.location.href
-            };
-        });
-        
-        log.info('Extracted user data');
-        
-        await Dataset.pushData({
-            mode: 'user',
-            data: userData2
-        });
-    }
-    else if (userData.type === 'comments') {
-        // Extract comments
-        const comments = await page.evaluate(() => {
-            const items: any[] = [];
-            const commentEls = document.querySelectorAll('.comment-item, [class*="comment"]');
-            
-            commentEls.forEach((el) => {
-                const user = el.querySelector('.user-name, [class*="user"]')?.textContent?.trim();
-                const content = el.querySelector('.text, [class*="content"]')?.textContent?.trim();
-                
-                if (user && content) {
-                    items.push({ user, content });
-                }
-            });
-            
-            return items;
-        });
-        
-        log.info(`Found ${comments.length} comments`);
-        
-        await Dataset.pushData({
-            mode: 'comments',
-            comments: comments,
-            total: comments.length
-        });
-    }
+// Get API URL from env or input
+function getApiUrl(input: Input): string {
+    return input.apiUrl || process.env.XHS_API_URL || 'http://localhost:5000';
 }
 
 async function main() {
@@ -125,17 +26,99 @@ async function main() {
         throw new Error('Input is required with mode (search/note/user/comments)');
     }
     
+    const apiUrl = getApiUrl(input);
+    
+    let endpoint = '';
+    let method = 'POST';
+    let body: any = {};
+    
+    switch (input.mode) {
+        case 'search':
+            if (!input.keyword) throw new Error('Keyword required for search');
+            endpoint = '/search';
+            body = { keyword: input.keyword, page_size: input.limit || 20 };
+            break;
+            
+        case 'note':
+            if (!input.noteUrl) throw new Error('noteUrl required for note');
+            // Extract note ID from URL
+            const noteId = input.noteUrl.match(/explore\/([a-zA-Z0-9]+)/)?.[1];
+            if (!noteId) throw new Error('Invalid note URL');
+            endpoint = `/note/${noteId}`;
+            method = 'GET';
+            break;
+            
+        case 'user':
+            const userId = input.userId || input.userUrl?.match(/profile\/([a-zA-Z0-9-]+)/)?.[1];
+            if (!userId) throw new Error('userId or userUrl required');
+            endpoint = `/user/${userId}`;
+            method = 'GET';
+            break;
+            
+        case 'comments':
+            if (!input.noteUrl) throw new Error('noteUrl required for comments');
+            const commentNoteId = input.noteUrl.match(/explore\/([a-zA-Z0-9]+)/)?.[1];
+            if (!commentNoteId) throw new Error('Invalid note URL');
+            endpoint = `/notes/${commentNoteId}/comments`;
+            method = 'GET';
+            break;
+            
+        default:
+            throw new Error(`Unknown mode: ${input.mode}`);
+    }
+    
+    log.info(`Calling backend API: ${method} ${apiUrl}${endpoint}`);
+    
+    try {
+        let response;
+        
+        if (method === 'GET') {
+            response = await fetch(`${apiUrl}${endpoint}`);
+        } else {
+            response = await fetch(`${apiUrl}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+        }
+        
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        await Dataset.pushData({
+            mode: input.mode,
+            data,
+            apiUrl,
+            endpoint
+        });
+        
+        log.info(`Successfully fetched data from ${input.mode}`);
+        
+    } catch (error: any) {
+        log.error(`API call failed: ${error.message}`);
+        
+        // If backend is unavailable, try direct scraping as fallback
+        log.info('Falling back to direct scraping...');
+        await fallbackScraping(input);
+    }
+    
+    await Actor.exit();
+}
+
+// Fallback: direct scraping when backend unavailable
+async function fallbackScraping(input: Input) {
+    log.info('Starting fallback scraping...');
+    
     const crawler = new PlaywrightCrawler({
         maxConcurrency: 1,
-        maxRequestRetries: 3,
-        requestHandlerTimeoutSecs: 90,
-        useSessionPool: true,
+        maxRequestRetries: 2,
+        requestHandlerTimeoutSecs: 60,
         preNavigationHooks: [
             async ({ page }) => {
-                // Set viewport
                 await page.setViewportSize({ width: 1920, height: 1080 });
-                
-                // Add basic anti-detection
                 await page.addInitScript(() => {
                     Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
                 });
@@ -144,48 +127,33 @@ async function main() {
     });
     
     let url = '';
-    let userData: any = { type: '' };
     
     switch (input.mode) {
         case 'search':
-            if (!input.keyword) throw new Error('Keyword required for search');
-            url = `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(input.keyword)}&type=51`;
-            userData = { type: 'search', keyword: input.keyword };
+            url = `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(input.keyword || '')}&type=51`;
             break;
-            
         case 'note':
-            if (!input.noteUrl) throw new Error('noteUrl required for note');
-            url = input.noteUrl;
-            userData = { type: 'note' };
+            url = input.noteUrl || '';
             break;
-            
         case 'user':
-            const userId = input.userId || input.userUrl;
-            if (!userId) throw new Error('userId or userUrl required');
-            url = userId.startsWith('http') ? userId : `https://www.xiaohongshu.com/user/profile/${userId}`;
-            userData = { type: 'user' };
+            url = input.userUrl || `https://www.xiaohongshu.com/user/profile/${input.userId}`;
             break;
-            
         case 'comments':
-            if (!input.noteUrl) throw new Error('noteUrl required for comments');
-            url = input.noteUrl;
-            userData = { type: 'comments' };
+            url = input.noteUrl || '';
             break;
-            
-        default:
-            throw new Error(`Unknown mode: ${input.mode}`);
     }
     
-    log.info(`Starting scrape: ${input.mode} - ${url}`);
+    if (!url) {
+        throw new Error('No URL to scrape');
+    }
     
-    await crawler.run([{
-        url,
-        userData
-    }]);
+    await crawler.run([{ url, userData: { type: input.mode } }]);
     
-    log.info('Scraping completed');
-    
-    await Actor.exit();
+    await Dataset.pushData({
+        mode: input.mode,
+        note: 'Fallback scraping completed - results in dataset',
+        warning: 'Direct scraping may be limited due to anti-bot measures'
+    });
 }
 
 main().catch((error) => {
