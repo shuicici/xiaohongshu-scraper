@@ -1,5 +1,5 @@
 import { Actor } from 'apify';
-import { Router } from './routes/router.js';
+import { XiaohongshuScraper } from './routes/router.js';
 
 interface Input {
     mode: 'search' | 'note' | 'user' | 'comments';
@@ -21,21 +21,21 @@ async function main() {
         throw new Error('Input is required. Please provide a valid input with mode.');
     }
 
-    const router = new Router();
+    const scraper = new XiaohongshuScraper();
 
     switch (input.mode) {
         case 'search':
             if (!input.keyword) {
                 throw new Error('Keyword is required for search mode');
             }
-            await router.handleSearch(input.keyword, input.limit || 20);
+            await scraper.handleSearch(input.keyword, input.limit || 20);
             break;
             
         case 'note':
             if (!input.noteUrl) {
                 throw new Error('Note URL is required for note mode');
             }
-            await router.handleNote(input.noteUrl);
+            await scraper.handleNote(input.noteUrl);
             break;
             
         case 'user':
@@ -43,14 +43,14 @@ async function main() {
             if (!userIdentifier) {
                 throw new Error('User ID or User URL is required for user mode');
             }
-            await router.handleUser(userIdentifier, input.limit || 20);
+            await scraper.handleUser(userIdentifier, input.limit || 20);
             break;
             
         case 'comments':
             if (!input.noteUrl) {
                 throw new Error('Note URL is required for comments mode');
             }
-            await router.handleComments(input.noteUrl, input.limit || 50);
+            await scraper.handleComments(input.noteUrl, input.limit || 50);
             break;
             
         default:

@@ -1,6 +1,12 @@
-import { Actor } from 'apify';
-import { PlaywrightCrawler, Dataset } from 'crawlee';
-import axios from 'axios';
+import { Dataset } from 'apify';
+import axios, { AxiosInstance } from 'axios';
+
+// Simple logging
+const log = {
+    info: (msg: string) => console.log(`[INFO] ${msg}`),
+    warning: (msg: string) => console.warn(`[WARN] ${msg}`),
+    error: (msg: string) => console.error(`[ERROR] ${msg}`)
+};
 
 // Mobile user agent to bypass anti-bot
 const MOBILE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1';
@@ -50,23 +56,19 @@ interface Comment {
     replies?: Comment[];
 }
 
-export class Router {
-    private crawler: PlaywrightCrawler;
+class XiaohongshuScraper {
+    private client: AxiosInstance;
     
     constructor() {
-        this.crawler = new PlaywrightCrawler({
-            maxConcurrency: 3,
-            maxRequestRetries: 3,
-            requestHandlerTimeoutSecs: 60,
-            preNavigationHooks: [
-                async ({ page }) => {
-                    await page.setExtraHTTPHeaders({
-                        'User-Agent': MOBILE_UA,
-                        'Accept': 'application/json',
-                        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-                    });
-                }
-            ]
+        this.client = axios.create({
+            timeout: 30000,
+            headers: {
+                'User-Agent': MOBILE_UA,
+                'Referer': 'https://www.xiaohongshu.com/',
+                'Origin': 'https://www.xiaohongshu.com',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            }
         });
     }
 
@@ -74,20 +76,12 @@ export class Router {
      * Search notes by keyword
      */
     async handleSearch(keyword: string, limit: number): Promise<void> {
-        Actor.log.info(`Searching for: ${keyword}, limit: ${limit}`);
+        log.info(`Searching for: ${keyword}, limit: ${limit}`);
         
         const searchUrl = `https://edith.xiaohongshu.com/api/sns/web/v1/search/notes?keyword=${encodeURIComponent(keyword)}&page=1&page_size=${limit}`;
         
         try {
-            const response = await axios.get(searchUrl, {
-                headers: {
-                    'User-Agent': MOBILE_UA,
-                    'Referer': 'https://www.xiaohongshu.com/',
-                    'Origin': 'https://www.xiaohongshu.com'
-                },
-                timeout: 30000
-            });
-            
+            const response = await this.client.get(searchUrl);
             const notes: Note[] = this.parseSearchResults(response.data);
             
             await Dataset.pushData({
@@ -97,13 +91,11 @@ export class Router {
                 total: notes.length
             });
             
-            Actor.log.info(`Found ${notes.length} notes for keyword: ${keyword}`);
+            log.info(`Found ${notes.length} notes for keyword: ${keyword}`);
             
         } catch (error: any) {
-            Actor.log.error(`Search failed: ${error.message}`);
-            
-            // Fallback to web scraping if API fails
-            await this.scrapeSearchFallback(keyword, limit);
+            log.error(`Search failed: ${error.message}`);
+            throw error;
         }
     }
 
@@ -111,9 +103,8 @@ export class Router {
      * Get single note details
      */
     async handleNote(noteUrl: string): Promise<void> {
-        Actor.log.info(`Fetching note: ${noteUrl}`);
+        log.info(`Fetching note: ${noteUrl}`);
         
-        // Extract note ID from URL
         const noteId = this.extractNoteId(noteUrl);
         
         if (!noteId) {
@@ -123,15 +114,7 @@ export class Router {
         const apiUrl = `https://edith.xiaohongshu.com/api/sns/web/v1/feed/${noteId}?image_formats=jpg,webp`;
         
         try {
-            const response = await axios.get(apiUrl, {
-                headers: {
-                    'User-Agent': MOBILE_UA,
-                    'Referer': 'https://www.xiaohongshu.com/',
-                    'Origin': 'https://www.xiaohongshu.com'
-                },
-                timeout: 30000
-            });
-            
+            const response = await this.client.get(apiUrl);
             const note = this.parseNoteDetail(response.data);
             
             await Dataset.pushData({
@@ -140,10 +123,10 @@ export class Router {
                 data: note
             });
             
-            Actor.log.info(`Fetched note: ${note.title}`);
+            log.info(`Fetched note: ${note.title}`);
             
         } catch (error: any) {
-            Actor.log.error(`Failed to fetch note: ${error.message}`);
+            log.error(`Failed to fetch note: ${error.message}`);
             throw error;
         }
     }
@@ -152,12 +135,16 @@ export class Router {
      * Get user profile and their notes
      */
     async handleUser(userIdentifier: string, limit: number): Promise<void> {
-        Actor.log.info(`Fetching user: ${userIdentifier}`);
+        log.info(`Fetching user: ${userIdentifier}`);
         
         let userId: string;
         
         if (userIdentifier.startsWith('http')) {
-            userId = this.extractUserId(userIdentifier);
+            const extracted = this.extractUserId(userIdentifier);
+            if (!extracted) {
+                throw new Error(`Invalid user URL: ${userIdentifier}`);
+            }
+            userId = extracted;
         } else {
             userId = userIdentifier;
         }
@@ -169,27 +156,18 @@ export class Router {
         const apiUrl = `https://edith.xiaohongshu.com/api/sns/web/v1/user/otherinfo/${userId}`;
         
         try {
-            const [userResponse, notesResponse] = await Promise.all([
-                axios.get(apiUrl, {
-                    headers: {
-                        'User-Agent': MOBILE_UA,
-                        'Referer': 'https://www.xiaohongshu.com/',
-                        'Origin': 'https://www.xiaohongshu.com'
-                    },
-                    timeout: 30000
-                }),
-                axios.get(`https://edith.xiaohongshu.com/api/sns/web/v1/user/notes/${userId}?page=1&page_size=${limit}`, {
-                    headers: {
-                        'User-Agent': MOBILE_UA,
-                        'Referer': 'https://www.xiaohongshu.com/',
-                        'Origin': 'https://www.xiaohongshu.com'
-                    },
-                    timeout: 30000
-                })
-            ]);
-            
+            const userResponse = await this.client.get(apiUrl);
             const user = this.parseUserInfo(userResponse.data);
-            const notes = this.parseUserNotes(notesResponse.data);
+            
+            let notes: Note[] = [];
+            try {
+                const notesResponse = await this.client.get(
+                    `https://edith.xiaohongshu.com/api/sns/web/v1/user/notes/${userId}?page=1&page_size=${limit}`
+                );
+                notes = this.parseUserNotes(notesResponse.data);
+            } catch (e) {
+                log.warning('Could not fetch user notes');
+            }
             
             await Dataset.pushData({
                 mode: 'user',
@@ -199,10 +177,10 @@ export class Router {
                 notesCount: notes.length
             });
             
-            Actor.log.info(`Fetched user: ${user.nickname}, ${notes.length} notes`);
+            log.info(`Fetched user: ${user.nickname}, ${notes.length} notes`);
             
         } catch (error: any) {
-            Actor.log.error(`Failed to fetch user: ${error.message}`);
+            log.error(`Failed to fetch user: ${error.message}`);
             throw error;
         }
     }
@@ -211,7 +189,7 @@ export class Router {
      * Extract comments from a note
      */
     async handleComments(noteUrl: string, limit: number): Promise<void> {
-        Actor.log.info(`Fetching comments for: ${noteUrl}`);
+        log.info(`Fetching comments for: ${noteUrl}`);
         
         const noteId = this.extractNoteId(noteUrl);
         
@@ -222,15 +200,7 @@ export class Router {
         const apiUrl = `https://edith.xiaohongshu.com/api/sns/web/v1/notes/${noteId}/comments?page=1&page_size=${limit}`;
         
         try {
-            const response = await axios.get(apiUrl, {
-                headers: {
-                    'User-Agent': MOBILE_UA,
-                    'Referer': 'https://www.xiaohongshu.com/',
-                    'Origin': 'https://www.xiaohongshu.com'
-                },
-                timeout: 30000
-            });
-            
+            const response = await this.client.get(apiUrl);
             const comments = this.parseComments(response.data);
             
             await Dataset.pushData({
@@ -241,10 +211,10 @@ export class Router {
                 totalComments: comments.length
             });
             
-            Actor.log.info(`Fetched ${comments.length} comments`);
+            log.info(`Fetched ${comments.length} comments`);
             
         } catch (error: any) {
-            Actor.log.error(`Failed to fetch comments: ${error.message}`);
+            log.error(`Failed to fetch comments: ${error.message}`);
             throw error;
         }
     }
@@ -280,7 +250,7 @@ export class Router {
                 });
             }
         } catch (error) {
-            Actor.log.error('Error parsing search results');
+            log.error('Error parsing search results');
         }
         
         return notes;
@@ -390,7 +360,7 @@ export class Router {
                 comments.push(comment);
             }
         } catch (error) {
-            Actor.log.error('Error parsing comments');
+            log.error('Error parsing comments');
         }
         
         return comments;
@@ -421,27 +391,15 @@ export class Router {
 
     // Helper: Extract note ID from URL
     private extractNoteId(url: string): string | null {
-        // https://www.xiaohongshu.com/explore/1234567890abcdef
         const match = url.match(/explore\/([a-zA-Z0-9]+)/);
         return match ? match[1] : null;
     }
 
     // Helper: Extract user ID from URL
     private extractUserId(url: string): string | null {
-        // https://www.xiaohongshu.com/user/profile/1234567890abcdef
         const match = url.match(/profile\/([a-zA-Z0-9-]+)/);
         return match ? match[1] : null;
     }
-
-    // Fallback: Scrape search results from web page
-    private async scrapeSearchFallback(keyword: string, limit: number): Promise<void> {
-        Actor.log.info('Using fallback web scraping for search');
-        
-        const searchUrl = `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(keyword)}&type=51`;
-        
-        await this.crawler.run([{
-            url: searchUrl,
-            userData: { keyword, limit }
-        }]);
-    }
 }
+
+export { XiaohongshuScraper };
