@@ -1,9 +1,9 @@
 {
-  "usableSessionsCount": 2,
+  "usableSessionsCount": 6,
   "retiredSessionsCount": 0,
   "sessions": [
     {
-      "id": "session_HGXHwXnJEG",
+      "id": "session_CSnBjBdbDN",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -16,14 +16,14 @@
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-03-24T12:08:38.162Z",
-      "createdAt": "2026-03-24T11:18:38.162Z",
+      "expiresAt": "2026-03-25T05:26:43.030Z",
+      "createdAt": "2026-03-25T04:36:43.030Z",
       "usageCount": 0,
       "maxUsageCount": 50,
       "errorScore": 0
     },
     {
-      "id": "session_CsX5pZIW2D",
+      "id": "session_oUy9hto6mI",
       "cookieJar": {
         "version": "tough-cookie@6.0.1",
         "storeType": "MemoryCookieStore",
@@ -31,88 +31,96 @@
         "enableLooseMode": false,
         "allowSpecialUseDomain": true,
         "prefixSecurity": "silent",
-        "cookies": [
-          {
-            "key": "acw_tc",
-            "value": "0a00d2c517743511214991533eb31c55655197c9c66a1f1dd2aeef34bd0861",
-            "expires": "2026-03-24T11:48:41.780Z",
-            "domain": "www.xiaohongshu.com",
-            "path": "/",
-            "httpOnly": true,
-            "hostOnly": true,
-            "creation": "2026-03-24T11:18:51.041Z",
-            "lastAccessed": "2026-03-24T11:18:51.041Z"
-          },
-          {
-            "key": "abRequestId",
-            "value": "4b8d0cb9-73f1-5129-a236-9a95d977b635",
-            "expires": "2027-03-24T11:18:41.780Z",
-            "domain": "xiaohongshu.com",
-            "path": "/",
-            "hostOnly": false,
-            "creation": "2026-03-24T11:18:51.041Z",
-            "lastAccessed": "2026-03-24T11:18:51.041Z"
-          },
-          {
-            "key": "webBuild",
-            "value": "6.1.3",
-            "expires": "2026-03-24T12:08:51.038Z",
-            "domain": "xiaohongshu.com",
-            "path": "/",
-            "hostOnly": false,
-            "creation": "2026-03-24T11:18:51.045Z",
-            "lastAccessed": "2026-03-24T11:18:51.045Z"
-          },
-          {
-            "key": "xsecappid",
-            "value": "xhs-pc-web",
-            "expires": "2027-03-24T11:18:50.000Z",
-            "domain": "xiaohongshu.com",
-            "path": "/",
-            "hostOnly": false,
-            "creation": "2026-03-24T11:18:51.048Z",
-            "lastAccessed": "2026-03-24T11:18:51.048Z"
-          },
-          {
-            "key": "a1",
-            "value": "19d1f9192a7y2qeyv8qoi57vk5vo2czeqeghwc73j30000144516",
-            "expires": "2027-03-24T11:18:47.000Z",
-            "domain": "xiaohongshu.com",
-            "path": "/",
-            "hostOnly": false,
-            "creation": "2026-03-24T11:18:51.048Z",
-            "lastAccessed": "2026-03-24T11:18:51.048Z"
-          },
-          {
-            "key": "webId",
-            "value": "22757316aacbaecb81bb1a9ac8f3c56f",
-            "expires": "2027-03-24T11:18:47.000Z",
-            "domain": "xiaohongshu.com",
-            "path": "/",
-            "hostOnly": false,
-            "creation": "2026-03-24T11:18:51.048Z",
-            "lastAccessed": "2026-03-24T11:18:51.048Z"
-          },
-          {
-            "key": "loadts",
-            "value": "1774351130910",
-            "expires": "2027-03-24T11:18:50.000Z",
-            "domain": "xiaohongshu.com",
-            "path": "/",
-            "hostOnly": false,
-            "creation": "2026-03-24T11:18:51.049Z",
-            "lastAccessed": "2026-03-24T11:18:51.049Z"
-          }
-        ]
+        "cookies": []
       },
       "userData": {},
       "maxErrorScore": 3,
       "errorScoreDecrement": 0.5,
-      "expiresAt": "2026-03-24T12:08:38.163Z",
-      "createdAt": "2026-03-24T11:18:38.163Z",
+      "expiresAt": "2026-03-25T05:26:43.031Z",
+      "createdAt": "2026-03-25T04:36:43.031Z",
       "usageCount": 1,
       "maxUsageCount": 50,
+      "errorScore": 1
+    },
+    {
+      "id": "session_SNUjHql4O0",
+      "cookieJar": {
+        "version": "tough-cookie@6.0.1",
+        "storeType": "MemoryCookieStore",
+        "rejectPublicSuffixes": true,
+        "enableLooseMode": false,
+        "allowSpecialUseDomain": true,
+        "prefixSecurity": "silent",
+        "cookies": []
+      },
+      "userData": {},
+      "maxErrorScore": 3,
+      "errorScoreDecrement": 0.5,
+      "expiresAt": "2026-03-25T05:26:47.167Z",
+      "createdAt": "2026-03-25T04:36:47.167Z",
+      "usageCount": 1,
+      "maxUsageCount": 50,
+      "errorScore": 1
+    },
+    {
+      "id": "session_jwqH2tetK5",
+      "cookieJar": {
+        "version": "tough-cookie@6.0.1",
+        "storeType": "MemoryCookieStore",
+        "rejectPublicSuffixes": true,
+        "enableLooseMode": false,
+        "allowSpecialUseDomain": true,
+        "prefixSecurity": "silent",
+        "cookies": []
+      },
+      "userData": {},
+      "maxErrorScore": 3,
+      "errorScoreDecrement": 0.5,
+      "expiresAt": "2026-03-25T05:26:47.172Z",
+      "createdAt": "2026-03-25T04:36:47.172Z",
+      "usageCount": 0,
+      "maxUsageCount": 50,
       "errorScore": 0
+    },
+    {
+      "id": "session_oCxrQwIsE5",
+      "cookieJar": {
+        "version": "tough-cookie@6.0.1",
+        "storeType": "MemoryCookieStore",
+        "rejectPublicSuffixes": true,
+        "enableLooseMode": false,
+        "allowSpecialUseDomain": true,
+        "prefixSecurity": "silent",
+        "cookies": []
+      },
+      "userData": {},
+      "maxErrorScore": 3,
+      "errorScoreDecrement": 0.5,
+      "expiresAt": "2026-03-25T05:26:47.173Z",
+      "createdAt": "2026-03-25T04:36:47.173Z",
+      "usageCount": 1,
+      "maxUsageCount": 50,
+      "errorScore": 1
+    },
+    {
+      "id": "session_CLgAgElxD8",
+      "cookieJar": {
+        "version": "tough-cookie@6.0.1",
+        "storeType": "MemoryCookieStore",
+        "rejectPublicSuffixes": true,
+        "enableLooseMode": false,
+        "allowSpecialUseDomain": true,
+        "prefixSecurity": "silent",
+        "cookies": []
+      },
+      "userData": {},
+      "maxErrorScore": 3,
+      "errorScoreDecrement": 0.5,
+      "expiresAt": "2026-03-25T05:26:52.135Z",
+      "createdAt": "2026-03-25T04:36:52.135Z",
+      "usageCount": 1,
+      "maxUsageCount": 50,
+      "errorScore": 1
     }
   ]
 }

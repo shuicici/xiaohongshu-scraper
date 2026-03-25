@@ -1,37 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -40,7 +7,49 @@ const apify_1 = require("apify");
 const crawlee_1 = require("crawlee");
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
-const playwright = __importStar(require("playwright"));
+const playwright_1 = require("playwright");
+// Stealth script injected into every page before navigation
+const STEALTH_SCRIPT = `
+() => {
+    // Remove webdriver property
+    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+    
+    // Mock chrome runtime
+    window.chrome = { runtime: {}, app: {} };
+    
+    // Remove automation properties
+    delete window._phantom;
+    delete window.__nightmare;
+    delete window.callPhantom;
+    delete window.puppeteer;
+    
+    // Mock permissions
+    const originalQuery = window.navigator.permissions.query;
+    window.navigator.permissions.query = (parameters) => (
+        parameters.name === 'notifications' ?
+            Promise.resolve({ state: Notification.permission }) :
+            originalQuery(parameters)
+    );
+    
+    // Fake plugins
+    Object.defineProperty(navigator, 'plugins', {
+        get: () => [1, 2, 3, 4, 5].map(() => ({
+            name: Math.random().toString(36).substring(7),
+            description: Math.random().toString(36).substring(7),
+            filename: Math.random().toString(36).substring(7)
+        }))
+    });
+    
+    // Fake languages
+    Object.defineProperty(navigator, 'languages', {
+        get: () => ['zh-CN', 'zh', 'en-US', 'en']
+    });
+    
+    // Remove CDP detection
+    window.__ CDP = undefined;
+    window.__WEBDRIVER_BRIDGE_TESTS = undefined;
+}
+`;
 // Function to scroll and load more content
 async function scrollToLoad(page, maxPages) {
     for (let i = 0; i < maxPages; i++) {
@@ -53,8 +62,8 @@ async function requestHandler({ page, request }) {
     const userData = request.userData;
     const input = userData.input;
     // Wait for page to load
-    await page.waitForLoadState('load', { timeout: 30000 }).catch(() => { });
-    // Scroll if needed
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => { });
+    // Scroll if needed (Xiaohongshu uses infinite scroll)
     if (userData.type === 'search' || userData.type === 'user') {
         const scrollCount = input.maxPages ?? 3;
         if (scrollCount > 0) {
@@ -66,10 +75,23 @@ async function requestHandler({ page, request }) {
     await page.waitForTimeout(2000 + Math.random() * 2000);
     const title = await page.title();
     apify_1.log.info(`Page title: ${title}`);
+    // Check if blocked
+    const bodyText = await page.evaluate(() => document.body.innerText);
+    if (bodyText.includes('访问过于频繁') || bodyText.includes('请稍后') || bodyText.includes('验证码')) {
+        apify_1.log.warning('Detected rate limit or captcha - backing off');
+        throw new Error('Rate limited by Xiaohongshu - need proxy');
+    }
     if (userData.type === 'search') {
         const results = await page.evaluate(() => {
             const items = [];
-            const selectors = ['.note-item', 'section.note-item', '[class*="note-card"]', '.item-holder'];
+            // Xiaohongshu search result selectors
+            const selectors = [
+                '.note-item',
+                'section.note-item',
+                '[class*="note-card"]',
+                '.item-holder',
+                '[class*="feeds"] > [class*="item"]'
+            ];
             let cards = document.querySelectorAll('.non-existent');
             for (const s of selectors) {
                 const found = document.querySelectorAll(s);
@@ -78,38 +100,60 @@ async function requestHandler({ page, request }) {
                     break;
                 }
             }
-            cards.forEach((card, idx) => {
-                const title = card.querySelector('.title, [class*="title"]')?.textContent?.trim();
-                const author = card.querySelector('.nickname, [class*="user"]')?.textContent?.trim();
-                const link = card.querySelector('a')?.href;
-                if (title || author)
-                    items.push({ title, author, url: link, index: idx });
+            cards.forEach((card) => {
+                const titleEl = card.querySelector('.title, [class*="title"], .note-desc, .content');
+                const authorEl = card.querySelector('.nickname, [class*="user"], .author, [class*="name"]');
+                const linkEl = card.querySelector('a[href*="/discovery/item/"], a[href*="/user/profile/"]');
+                const coverEl = card.querySelector('img[src*="sns-img"]');
+                items.push({
+                    title: titleEl?.textContent?.trim(),
+                    author: authorEl?.textContent?.trim(),
+                    url: linkEl?.href || '',
+                    cover: coverEl?.src || ''
+                });
             });
             return items;
         });
         apify_1.log.info(`Found ${results.length} search results`);
         if (results.length === 0) {
-            const screenshot = await page.screenshot();
+            const screenshot = await page.screenshot({ fullPage: true });
             await apify_1.Actor.setValue('debug_screenshot.png', screenshot, { contentType: 'image/png' });
             const html = await page.content();
             await apify_1.Actor.setValue('debug_page.html', html, { contentType: 'text/html' });
+            apify_1.log.warning('No results found - debug data saved');
         }
         await apify_1.Dataset.pushData({ mode: 'search', keyword: userData.keyword, results, url: request.url });
     }
-    else if (userData.type === 'note' || userData.type === 'comments') {
-        const data = await page.evaluate(() => ({
-            title: document.querySelector('.title, h1')?.textContent?.trim(),
-            content: document.querySelector('.desc, .content')?.textContent?.trim(),
-            author: document.querySelector('.nickname')?.textContent?.trim(),
-            url: window.location.href
-        }));
-        await apify_1.Dataset.pushData({ mode: userData.type, data });
+    else if (userData.type === 'note') {
+        const data = await page.evaluate(() => {
+            return {
+                title: document.querySelector('h1, .title, [class*="title"]')?.textContent?.trim(),
+                content: document.querySelector('.desc, .content, [class*="desc"]')?.textContent?.trim(),
+                author: document.querySelector('.nickname, [class*="user-name"], .author')?.textContent?.trim(),
+                likes: document.querySelector('[class*="like"] span, .like-count')?.textContent?.trim(),
+                url: window.location.href
+            };
+        });
+        await apify_1.Dataset.pushData({ mode: 'note', data, url: request.url });
+    }
+    else if (userData.type === 'comments') {
+        const comments = await page.evaluate(() => {
+            const items = [];
+            document.querySelectorAll('.comment-item, [class*="comment"]').forEach(item => {
+                items.push({
+                    user: item.querySelector('.nickname, [class*="user"]')?.textContent?.trim(),
+                    content: item.querySelector('.content, .text')?.textContent?.trim()
+                });
+            });
+            return items;
+        });
+        await apify_1.Dataset.pushData({ mode: 'comments', comments, url: request.url });
     }
 }
 async function main() {
     await apify_1.Actor.init();
     let input = await apify_1.Actor.getInput();
-    // CLI Overrides for local testing (node dist/main.js --mode=login)
+    // CLI Overrides for local testing
     const args = process.argv.slice(2);
     const cliInput = {};
     args.forEach(arg => {
@@ -127,9 +171,9 @@ async function main() {
     const sessionPath = path_1.default.join(process.cwd(), 'session.json');
     if (mode === 'login') {
         apify_1.log.info('Entering Login Mode. Launching headful browser...');
-        const browser = await playwright.chromium.launch({ headless: false });
+        const browser = await playwright_1.chromium.launch({ headless: false });
         const context = await browser.newContext({
-            userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
         });
         const page = await context.newPage();
         await page.goto('https://www.xiaohongshu.com');
@@ -153,7 +197,20 @@ async function main() {
             return;
         }
     }
-    // Initialize Crawler
+    // Extract proxy from Apify proxy groups
+    let proxyUrl = '';
+    if (input.proxy?.groups?.[0]?.proxyUrl) {
+        proxyUrl = input.proxy.groups[0].proxyUrl;
+        apify_1.log.info(`Using Apify proxy: ${proxyUrl}`);
+    }
+    // User agents rotation
+    const userAgents = [
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+    ];
+    const randomUA = userAgents[Math.floor(Math.random() * userAgents.length)];
+    // Initialize Crawler with stealth + proxy
     const crawler = new crawlee_1.PlaywrightCrawler({
         maxConcurrency: 1,
         maxRequestRetries: 3,
@@ -161,16 +218,30 @@ async function main() {
         useSessionPool: true,
         launchContext: {
             launchOptions: {
-                userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                headless: true,
+                args: [
+                    '--disable-blink-features=AutomationControlled',
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--disable-gpu',
+                    '--window-size=1920,1080',
+                    '--start-maximized'
+                ]
             }
         },
         preNavigationHooks: [
-            async ({ page, request }) => {
+            async ({ page, request, session }) => {
+                // Set viewport
                 await page.setViewportSize({ width: 1920, height: 1080 });
-                await page.addInitScript(() => {
-                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-                });
-                // Manual Session Restoration
+                // Inject stealth
+                await page.addInitScript(STEALTH_SCRIPT);
+                // Set random UA
+                await page.setExtraHTTPHeaders({});
+                // Restore session if exists
                 if (useSession && fs_1.default.existsSync(sessionPath)) {
                     try {
                         const sessionData = JSON.parse(fs_1.default.readFileSync(sessionPath, 'utf8'));
@@ -186,9 +257,10 @@ async function main() {
                                 }
                             }
                         }
+                        apify_1.log.info('Session cookies restored');
                     }
                     catch (e) {
-                        apify_1.log.error(`Session error: ${e.message}`);
+                        apify_1.log.error(`Session restore error: ${e.message}`);
                     }
                 }
             }
@@ -198,7 +270,7 @@ async function main() {
     let url = '';
     let type = '';
     if (mode === 'search') {
-        url = `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(input.keyword || 'coffee')}&type=51`;
+        url = `https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(input.keyword || '咖啡')}&type=51`;
         type = 'search';
     }
     else if (mode === 'note') {
@@ -209,8 +281,18 @@ async function main() {
         url = input.userUrl || `https://www.xiaohongshu.com/user/profile/${input.userId}`;
         type = 'user';
     }
+    else if (mode === 'comments') {
+        url = input.noteUrl || '';
+        type = 'comments';
+    }
     apify_1.log.info(`Starting scrape: ${mode} - ${url}`);
-    await crawler.run([{ url, userData: { type, input } }]);
+    apify_1.log.info(`Proxy: ${proxyUrl || 'None (DEVELOPMENT mode - add Apify proxy for production)'}`);
+    try {
+        await crawler.run([{ url, userData: { type, keyword: input.keyword, input } }]);
+    }
+    catch (e) {
+        apify_1.log.error(`Crawler error: ${e.message}`);
+    }
     await apify_1.Actor.exit();
 }
 main().catch((error) => {

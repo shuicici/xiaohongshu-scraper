@@ -1,29 +1,62 @@
 {
-  "requestsFinished": 1,
-  "requestsFailed": 0,
-  "requestsRetries": 0,
-  "requestsFailedPerMinute": 0,
-  "requestsFinishedPerMinute": 3,
-  "requestMinDurationMillis": 21009,
-  "requestMaxDurationMillis": 21009,
-  "requestTotalFailedDurationMillis": 0,
-  "requestTotalFinishedDurationMillis": 21009,
-  "crawlerStartedAt": "2026-03-24T11:18:38.127Z",
-  "crawlerFinishedAt": "2026-03-24T11:18:59.232Z",
-  "statsPersistedAt": "2026-03-24T11:18:59.232Z",
-  "crawlerRuntimeMillis": 21223,
-  "crawlerLastStartTimestamp": 1774351118009,
+  "requestsFinished": 0,
+  "requestsFailed": 1,
+  "requestsRetries": 1,
+  "requestsFailedPerMinute": 6,
+  "requestsFinishedPerMinute": 0,
+  "requestMinDurationMillis": null,
+  "requestMaxDurationMillis": 0,
+  "requestTotalFailedDurationMillis": 2,
+  "requestTotalFinishedDurationMillis": 0,
+  "crawlerStartedAt": "2026-03-25T04:36:42.998Z",
+  "crawlerFinishedAt": "2026-03-25T04:36:52.151Z",
+  "statsPersistedAt": "2026-03-25T04:36:52.151Z",
+  "crawlerRuntimeMillis": 9250,
+  "crawlerLastStartTimestamp": 1774413402901,
   "requestRetryHistogram": [
+    null,
+    null,
+    null,
     1
   ],
   "statsId": 0,
-  "requestAvgFailedDurationMillis": null,
-  "requestAvgFinishedDurationMillis": 21009,
-  "requestTotalDurationMillis": 21009,
+  "requestAvgFailedDurationMillis": 2,
+  "requestAvgFinishedDurationMillis": null,
+  "requestTotalDurationMillis": 2,
   "requestsTotal": 1,
-  "requestsWithStatusCode": {
-    "200": 1
+  "requestsWithStatusCode": {},
+  "errors": {
+    "/Users/jenny/.openclaw/workspace-bd-api/xiaohongshu-scraper/node_modules/@crawlee/browser-pool/browser-pool.js:405:19": {
+      "missing error code": {
+        "Error": {
+          "browserController.newPage() failed: JDut5xjh3HiGP9oQwovGD": {
+            "count": 1
+          }
+        }
+      }
+    }
   },
-  "errors": {},
-  "retryErrors": {}
+  "retryErrors": {
+    "/Users/jenny/.openclaw/workspace-bd-api/xiaohongshu-scraper/node_modules/@crawlee/playwright/internals/utils/playwright-utils.js:165:17": {
+      "missing error code": {
+        "Error": {
+          "page.goto: net::ERR_ABORTED at https://www.xiaohongshu.com/search_result?keyword=coffee&type=51": {
+            "count": 1
+          },
+          "page.goto: Target page, context or browser has been closed": {
+            "count": 1
+          }
+        }
+      }
+    },
+    "/Users/jenny/.openclaw/workspace-bd-api/xiaohongshu-scraper/node_modules/@crawlee/browser-pool/browser-pool.js:405:19": {
+      "missing error code": {
+        "Error": {
+          "browserController.newPage() failed: XzUbtR9QV4F7oO3jj9Uix": {
+            "count": 1
+          }
+        }
+      }
+    }
+  }
 }
